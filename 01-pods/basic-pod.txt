@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-pod
+spec:
+  containers:
+    - name: my-container
+      image: nginx:latest
+      ports:
+        - containerPort: 80
+
+# It’s a minimal example of a running pod with a single NGINX container on port 80.
+# Useful for learning, quick testing, and basic workloads.

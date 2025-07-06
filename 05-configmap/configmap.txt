@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: my-config
+data:
+  key1: "value1"
+  key2: "value2"
+  
+# Stores non sensitive configuration data to be used by apps running in Kubernetes.
+# Mount it as files or environment variables inside pods.

@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: my-statefulset
+spec:
+  selector:
+    matchLabels:
+      app: stateful
+  serviceName: "stateful-service"
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: stateful
+    spec:
+      containers:
+        - name: stateful-container
+          image: mysql
+		  
+# Used for stateful applications that require stable, unique network identities and persistent storage (e.g., databases).

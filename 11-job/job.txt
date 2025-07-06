@@ -1,0 +1,14 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: my-job
+spec:
+  template:
+    spec:
+      containers:
+        - name: job-container
+          image: busybox
+          command: ["echo", "Hello Kubernetes"]
+      restartPolicy: Never
+	  
+# Runs a one-time task or batch job that executes and exits.
