@@ -1,0 +1,141 @@
+5 Kubernetes Scenarios — Devops Engineer should Know [Part-1]
+
+Whether you’re deploying your first microservice or managing a complex production cluster, you’ll eventually hit cryptic issues like ImagePullBackOff, Pod Pending, or pods stuck in Terminating.
+
+In this post, I’ll walk you through 5 real-world Kubernetes errors, the scenarios that cause them, and most importantly, how to fix and prevent them.
+
+Let’s dive into the trenches of Kubernetes troubleshooting — because the logs always have a story to tell.
+
+
+🚫Pod evicted
+A Pod Eviction Error occurs when a pod is forcibly removed (evicted) from a node by the Kubelet or the Kubernetes Control Plane due to certain system-level issues or constraints.
+
+Common Reasons for Pod Eviction
+Node resource pressure:
+MemoryPressure: Node is running low on RAM.
+DiskPressure: Node is low on disk space (either ephemeral or root disk).
+PIDPressure: Too many processes (PIDs) on the node.
+2. Node is unreachable or NotReady: Kubernetes may evict pods to maintain application availability if a node becomes unresponsive.
+
+3. Taints and Tolerations: If a node gets a taint and the pod doesn’t tolerate it, the pod can be evicted.
+
+4. API-initiated eviction: Admin or controller explicitly triggers pod eviction for reasons like node maintenance or scaling down.
+
+How to Identify:
+
+Run: kubectl get events — sort-by=.metadata.creationTimestamp
+Look for a message like: Pod <pod-name> evicted: The node had condition: [MemoryPressure].
+Describe the pod: kubectl describe pod <pod-name>
+How to Prevent It:
+
+Set resource requests/limits properly for CPU and memory.
+Use QoS classes wisely: Guaranteed > Burstable > BestEffort.
+Monitor node health and scale the cluster as needed.
+Use taints/tolerations and affinity rules strategically to control pod placement.
+🚫Pod Pending — “insufficient memory”
+Pod Pending — insufficient memory” error in Kubernetes means that the scheduler cannot find any node in the cluster with enough available memory to satisfy the pod’s memory request.
+
+Root Cause: Your pod has a memory request (resources.requests.memory) that exceeds the free memory available on all nodes.
+
+Pod’s memory request > any node’s free memory
+
+How to Identify the Issue:
+
+Check Pod Status: kubectl get pod <pod-name> -o wide
+Describe the Pod: kubectl describe pod <pod-name>
+Look for a message like: 0/3 nodes are available: 3 Insufficient memory.
+☑️ How to Fix:
+
+Add More Resources (Scale the Cluster)
+Add more nodes to your cluster.
+Increase memory on existing nodes (if possible).
+2. Evict or Resize Other Pods
+
+Identify pods consuming a lot of memory and scale them down.
+Use Vertical Pod Autoscaler (VPA) for better sizing.
+3. Check for Fragmentation or DaemonSets
+
+Some memory might be reserved for system pods (DaemonSets, kube-proxy, etc.).
+Check the actual allocatable memory on node.
+🚫Pod ImagePullBackOff.
+The ImagePullBackOff error in Kubernetes means that the pod failed to pull the container image from the container registry (like Docker Hub, ECR, GCR, etc.), and Kubernetes is backing off (retrying with increasing delay).
+
+Root Causes:
+❌ Wrong Image Name or Tag: Image name or tag is misspelled or doesn’t exist
+
+🔐 Private Registry without Credentials: Image is private, and Kubernetes doesn’t have a secret to authenticate.
+
+🌐 No Internet Access / DNS Issue: Node cannot reach the registry due to network problems.
+
+🛑 Rate Limiting (e.g., Docker Hub): Public registries might throttle unauthenticated pulls.
+
+🏷️ Missing latest Tag: If you don't specify a tag, Kubernetes tries :latest which may not exist.
+
+☑️How to Fix:
+
+Fix Image Name or Tag: image: nginx:1.25.0 # ✅ Correct
+
+Use Correct Registry URL: image: myregistry.com/myrepo/myapp:1.0.0
+
+Add imagePullSecrets for Private Images
+
+kubectl create secret docker-registry myregistrykey \
+— docker-username=<your-username> \
+— docker-password=<your-password> \
+— docker-server=<registry-url>
+
+Then in your pod spec:
+
+imagePullSecrets:
+— name: myregistrykey
+
+🚫ConfigMap updated but pod uses old config
+If you updated a ConfigMap, but the pod still uses the old config, it’s because Kubernetes does not automatically restart pods when a ConfigMap is updated.
+
+Why This Happens
+Kubernetes mounts the ConfigMap into the pod at runtime, but:
+
+If it’s mounted as an environment variable, changes won’t apply until pod restart.
+If it’s mounted as a volume, the file updates do appear inside the container, but your application must reload or reread the file to take effect.
+If the app reads the config only once at startup, then the new config will not be picked up until you restart the pod.
+☑️How to Fix:
+
+Manually Restart the Pod:
+kubectl rollout restart deployment <name>
+
+Or
+
+Use an Init Container or Sidecar to Watch Config Changes
+
+Implement a reloader like kube-reload or use a sidecar container that watches for changes and signals the main container to reload.
+🚫Pod stuck in Terminating
+A pod stuck in “Terminating” in Kubernetes means the pod is not shutting down properly, even though Kubernetes has issued a termination signal. This can happen due to a few common reasons.
+
+Causes of Stuck Terminating Pods:
+
+Finalizers Not Removed
+Some controllers (like PVC, custom controllers) add finalizers that must be cleared before the pod can be deleted.
+2. Pod Has a Long terminationGracePeriodSeconds
+
+If a pod takes too long to shut down or ignores the SIGTERM signal, it stays in terminating state.
+3. Container Not Responding to SIGTERM
+
+The app inside the container doesn’t handle termination signals correctly.
+4. Network Issues or Node Unreachable
+
+Kubernetes can’t communicate with the node where the pod is running, so it can’t complete termination.
+5. Volume (e.g., NFS, PVC) Detachment Issues
+
+Sometimes persistent volumes take too long to unmount or get stuck
+☑️How to Fix:
+Force Delete the Pod (use with caution!
+kubectl delete pod <pod-name> — grace-period=0 — force
+
+Remove Finalizers (if stuck due to them)
+kubectl get pod <pod-name> -o json | jq ‘.metadata.finalizers = []’ | kubectl replace — raw “/api/v1/namespaces/<namespace>/pods/<pod-name>/finalize” -f -
+
+Restart Node Agent (if node unreachable)
+If the pod is stuck because the node is unresponsive, you may need to:
+
+Reboot the node
+Or remove the node from the cluster if it’s permanently los
