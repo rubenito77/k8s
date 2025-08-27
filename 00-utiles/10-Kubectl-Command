@@ -1,0 +1,122 @@
+10 Kubectl Command That Every DevOps Should Know
+
+#1 Check Pod Status
+===================
+# For all pods
+---------------
+kubectl get pods -A
+
+# For specific namespace
+-------------------------
+kubectl get pods -A -n <namespace>
+
+Lists all pods in all namespaces with their status (Running, CrashLoopBackOff, Error, etc.)
+
+This command will produce following result:
+--------------------------------------------
+NAMESPACE     NAME                         READY   STATUS             RESTARTS   AGE
+default       myapp-58b7c7c566-x4tp2       1/1     Running            0          5m
+kube-system   coredns-558bd4d5db-qnx8s     0/1     CrashLoopBackOff   3          10m
+
+#2 Describe a Pod
+==================
+kubectl describe pod <pod-name> -n <namespace>
+
+Shows detailed information about the pod, including events (e.g., scheduling issues, container failures)
+
+#3 Check Pod Logs
+==================
+# Retrieves logs from the main container in the pod
+kubectl logs <pod-name> -n <namespace> 
+
+# For multi-continer Pod
+kubectl logs <pod-name> -c <container-name> -n <namespace>
+
+Example
+--------
+kubectl logs myapp-78c4d6cddf-n8k5p -n default
+
+This command may produce following result:
+
+Starting MyApp...
+Connecting to database...
+Database connected.
+Error: Configuration file not found at /etc/myapp/config.yaml
+Exiting application...
+
+#4 Get Events
+=============
+# Lists recent events across all namespaces
+# (e.g., failed scheduling, image pull errors).
+
+kubectl get events -A --sort-by=.metadata.creationTimestamp
+
+This command will produce following result:
+
+TYPE     REASON              AGE   FROM               MESSAGE
+Warning  FailedScheduling    1m    default-scheduler  0/3 nodes are available: 3 Insufficient cpu.
+Warning  BackOff             30s   kubelet            Back-off pulling image "nginx:wrong-tag"
+
+#5 Check Deployment Status
+===========================
+# Validates rollout status, replicas, image issues, etc.
+
+kubectl get deployment <deployment-name> -n <namespace>
+kubectl describe deployment <deployment-name> -n <namespace>
+
+Pro Tip: Look at the “Conditions” section for rollout messages and errors.
+
+#6 Check Node Status
+=====================
+# Useful for checking resource pressure, taints, or node-level issues.
+
+kubectl get nodes
+kubectl describe node <node-name>
+
+This command will produce following result:
+-------------------------------------------
+NAME            STATUS     ROLES    AGE   VERSION
+node1           Ready      worker   30d   v1.29.0
+node2           NotReady   worker   30d   v1.29.0
+
+#7 Check Services and Endpoints
+================================
+#Validates if services are correctly pointing to pods.
+
+kubectl get svc -A
+kubectl describe svc <service-name> -n <namespace>
+kubectl get endpoints -n <namespace>
+
+#8 Check ReplicaSets and Pods Behind Deployments
+================================================
+# Helps in understanding if a deployment failed to create pods 
+# due to some misconfig.
+
+kubectl get rs -n <namespace>
+kubectl describe rs <replicaset-name> -n <namespace>
+Pro Tip: Use kubectl get rs -o wide to trace which ReplicaSet is tied to which Deployment revision
+
+#9 Exec into a Pod
+===================
+This command is used for:
+
+Check application configuration files.
+Test connectivity (curl, ping, etc.)
+Run debugging commands
+# Allows you to get inside a running container for live debugging.
+
+kubectl exec -it <pod-name> -n <namespace> -- /bin/sh
+
+#10 Check Resource Usage
+========================
+Why this is necessary to check?
+This helps DevOps team in decision making for complete cluster resources utilization and resource allocation to new PODs.
+
+# Useful for checking CPU/memory bottlenecks.
+
+kubectl top pod -n <namespace>
+kubectl top node
+This command will produce following result:
+
+NAME                       CPU(cores)   MEMORY(bytes)
+myapp-6c9f7c9df9-d7rsx     200m         300Mi
